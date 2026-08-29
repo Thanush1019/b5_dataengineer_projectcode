@@ -1,0 +1,162 @@
+{
+	"name": "dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DS_source",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				},
+				{
+					"dataset": {
+						"referenceName": "DS_targerfile",
+						"type": "DatasetReference"
+					},
+					"name": "source2"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "finalresult",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				},
+				{
+					"dataset": {
+						"referenceName": "DS_finalresult_update",
+						"type": "DatasetReference"
+					},
+					"name": "sink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "srchash"
+				},
+				{
+					"name": "trghash"
+				},
+				{
+					"name": "exists1"
+				},
+				{
+					"name": "isactive"
+				},
+				{
+					"name": "selecttoremovehash"
+				},
+				{
+					"name": "checkingprimarykey"
+				},
+				{
+					"name": "checkingallrecords"
+				},
+				{
+					"name": "isinactive"
+				},
+				{
+					"name": "tochangetheactivenumber"
+				},
+				{
+					"name": "removinghash"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          user_id as short,",
+				"          {subscription } as string,",
+				"          price as short,",
+				"          {location } as string,",
+				"          pincode as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source(output(",
+				"          user_id as short,",
+				"          {subscription } as string,",
+				"          price as short,",
+				"          {location } as string,",
+				"          pincode as integer,",
+				"          isactive as boolean",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source2",
+				"source1 derive(hash = md5(user_id,{subscription },price,{location },pincode)) ~> srchash",
+				"source2 derive(hash = md5(user_id,{subscription },price,{location },pincode)) ~> trghash",
+				"srchash, trghash exists(srchash@hash == trghash@hash,",
+				"     negate:true,",
+				"     broadcast: 'auto')~> exists1",
+				"exists1 derive(is_active = 1,",
+				"     partitionBy('hash', 1)) ~> isactive",
+				"isactive select(mapColumn(",
+				"          user_id,",
+				"          {subscription },",
+				"          price,",
+				"          {location },",
+				"          pincode,",
+				"          is_active",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selecttoremovehash",
+				"trghash, srchash exists(source2@user_id == source1@user_id,",
+				"     negate:false,",
+				"     broadcast: 'auto')~> checkingprimarykey",
+				"checkingprimarykey, srchash exists(trghash@hash == srchash@hash,",
+				"     negate:true,",
+				"     broadcast: 'auto')~> checkingallrecords",
+				"checkingallrecords derive(isactive = 0) ~> isinactive",
+				"isinactive alterRow(updateIf(1==1)) ~> tochangetheactivenumber",
+				"tochangetheactivenumber select(mapColumn(",
+				"          user_id,",
+				"          {subscription },",
+				"          price,",
+				"          {location },",
+				"          pincode,",
+				"          isactive",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> removinghash",
+				"selecttoremovehash sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          user_id as string,",
+				"          {subscription } as string,",
+				"          price as string,",
+				"          {location } as string,",
+				"          pincode as string,",
+				"          isactive as string",
+				"     ),",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sink1",
+				"removinghash sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          user_id as string,",
+				"          {subscription } as string,",
+				"          price as string,",
+				"          {location } as string,",
+				"          pincode as string,",
+				"          isactive as string",
+				"     ),",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sink"
+			]
+		}
+	}
+}

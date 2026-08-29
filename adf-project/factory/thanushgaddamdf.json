@@ -1,0 +1,15 @@
+{
+	"name": "thanushgaddamdf",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "96540a5a-bdc2-4880-8d68-a36999cd06e3",
+		"tenantId": "f9b5d68d-d0db-4259-88be-c5a10335a448"
+	}
+}
